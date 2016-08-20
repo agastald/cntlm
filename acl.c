@@ -35,6 +35,8 @@
  * TODO: retest ACLs on big-endian
  */
 
+int rev(int addr) { return ((addr >> 0 & 0xff) << 24) | ((addr >> 8 & 0xff) << 16) | ((addr >> 16 & 0xff) << 8) | ((addr >> 24 & 0xff)); }
+
 /*
  * Add the rule spec to the ACL list.
  */
@@ -75,10 +77,10 @@ int acl_add(plist_t *rules, char *spec, enum acl_t acl) {
 		}
 	}
 
-	aux->ip = source.s_addr;
+	aux->ip = rev(source.s_addr);
 	aux->mask = mask;
 	mask = swap32(~(((uint64_t)1 << (32-mask)) - 1));
-	if ((source.s_addr & mask) != source.s_addr)
+	if ((rev(source.s_addr) & mask) != rev(source.s_addr))
 		syslog(LOG_WARNING, "Subnet definition might be incorrect: %s/%d\n", inet_ntoa(source), aux->mask);
 
 	syslog(LOG_INFO, "New ACL rule: %s %s/%d\n", (acl == ACL_ALLOW ? "allow" : "deny"), inet_ntoa(source), aux->mask);
@@ -106,7 +108,7 @@ enum acl_t acl_check(plist_t rules, struct in_addr naddr) {
 		aux = (network_t *)rules->aux;
 		mask = swap32(~(((uint64_t)1 << (32-aux->mask)) - 1));
 
-		if ((naddr.s_addr & mask) == (aux->ip & mask))
+		if ((rev(naddr.s_addr) & mask) == (aux->ip & mask))
 			return rules->key;
 
 		rules = rules->next;
